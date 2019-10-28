@@ -3,7 +3,25 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.902
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileDissector.Domain", "FileDissector.Domain\FileDissector.Domain.csproj", "{071AB2D6-A927-456A-BABE-C9B8CDC65BC7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileDissector.Fixtures", "FileDissector.Fixtures\FileDissector.Fixtures.csproj", "{48D208FA-369B-48C5-816A-62B5B004DBE1}"
+EndProject
 Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{071AB2D6-A927-456A-BABE-C9B8CDC65BC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{071AB2D6-A927-456A-BABE-C9B8CDC65BC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{071AB2D6-A927-456A-BABE-C9B8CDC65BC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{071AB2D6-A927-456A-BABE-C9B8CDC65BC7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{48D208FA-369B-48C5-816A-62B5B004DBE1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{48D208FA-369B-48C5-816A-62B5B004DBE1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{48D208FA-369B-48C5-816A-62B5B004DBE1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{48D208FA-369B-48C5-816A-62B5B004DBE1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
