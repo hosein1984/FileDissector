@@ -40,6 +40,12 @@
     <Reference Include="DynamicData.Plinq, Version=4.3.1.1090, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\DynamicData.4.3.1.1090\lib\net45\DynamicData.Plinq.dll</HintPath>
     </Reference>
+    <Reference Include="FluentAssertions, Version=4.0.1.0, Culture=neutral, PublicKeyToken=33f2691a05b67b6a, processorArchitecture=MSIL">
+      <HintPath>..\packages\FluentAssertions.4.0.1\lib\net45\FluentAssertions.dll</HintPath>
+    </Reference>
+    <Reference Include="FluentAssertions.Core, Version=4.0.1.0, Culture=neutral, PublicKeyToken=33f2691a05b67b6a, processorArchitecture=MSIL">
+      <HintPath>..\packages\FluentAssertions.4.0.1\lib\net45\FluentAssertions.Core.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Reactive.Core, Version=2.2.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -71,10 +77,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FileScanFixture.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FileDissector.Domain\FileDissector.Domain.csproj">
+      <Project>{071ab2d6-a927-456a-babe-c9b8cdc65bc7}</Project>
+      <Name>FileDissector.Domain</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
