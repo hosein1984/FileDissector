@@ -8,7 +8,7 @@ using Xunit;
 
 namespace FileDissector.Fixtures
 {
-    public class FileScanFixture
+    public class ScanLineNumberFixture
     {
         /*
             Putting a thread sleep into a test sucks. However the file system watcher which ScanLineNumbers()

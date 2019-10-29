@@ -40,19 +40,18 @@ namespace FileDissector.Domain.FileHandling
                     var pageSize = x.request.PageSize;
                     var allLines = x.AllLines;
 
-                    var currentPage = lines.Items.Select(l => l.Number).ToArray();
-
+                    var previousPage = lines.Items.Select(l => l.Number).ToArray();
                     // if tailing, take the end only
                     // otherwise take the page size and start index from the request
-                    var newPage = (mode == ScrollingMode.Tail
-                        ? allLines.Skip(pageSize).ToArray()
-                        : allLines.Skip(x.request.FirstIndex).Take(pageSize)).ToArray();
+                    var currentPage = (mode == ScrollingMode.Tail
+                        ? allLines.Skip(allLines.Length - pageSize).ToArray()
+                        : allLines.Skip(x.request.FirstIndex - 1).Take(pageSize)).ToArray();
 
-                    var added = newPage.Except(currentPage).ToArray();
-                    var removed = currentPage.Except(newPage).ToArray();
+                    var added = currentPage.Except(previousPage).ToArray();
+                    var removed = previousPage.Except(currentPage).ToArray();
 
                     // read new lines from the file
-                    var addedLines = file.ReadLines(added);
+                    var addedLines = file.ReadLines(added).ToArray();
                     // get old lines from the current collection
                     var removedLines = lines.Items.Where(l => removed.Contains(l.Number)).ToArray();
 
