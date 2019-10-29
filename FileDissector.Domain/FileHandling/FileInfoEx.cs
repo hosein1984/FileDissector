@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using FileDissector.Domain.Infrastructure;
@@ -165,6 +167,54 @@ namespace FileDissector.Domain.FileHandling
                 return new CompositeDisposable(watcher,
                     changed.Merge(deleted).Merge(created).Merge(renamed).SubscribeSafe(observer));
             });
+        }
+
+        public static IEnumerable<Line> ReadLines(this FileInfo source, int[] lines)
+        {
+            using (var stream = File.Open(source.FullName, FileMode.Open, FileAccess.Read, FileShare.Delete | FileShare.ReadWrite))
+            {
+                using (var reader = new StreamReader(stream))
+                {
+                    string line;
+                    int position = 0;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        position++;
+
+                        if (lines.Contains(position))
+                        {
+                            yield return new Line(position, line);
+                        }
+                    }
+                }
+            }
+        }
+
+        public static IObservable<int[]> ScanLineNumbers(this FileInfo source, IObservable<string> textToMatch)
+        {
+            
+            return textToMatch
+                .Select(searchText =>
+                {
+                    Func<string, bool> predicate = null;
+                    if (!string.IsNullOrEmpty(searchText))
+                    {
+                        predicate = s => s.Contains(searchText, StringComparison.OrdinalIgnoreCase);
+                    }
+                    return source.ScanLineNumbers(predicate);
+                }).Switch();
+        }
+
+        private class ScanningState
+        {
+            public bool Initial { get; }
+            public int[] Items { get; }
+
+            public ScanningState(bool initial, int[] items)
+            {
+                Initial = initial;
+                Items = items;
+            }
         }
     }
 }

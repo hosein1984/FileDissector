@@ -45,7 +45,6 @@ namespace FileDissector.Fixtures
             var file = Path.GetTempFileName();
             var info = new FileInfo(file);
             int[] result = new int[0];
-
             File.AppendAllLines(file, Enumerable.Range(1,100).Select(i => $"{i}").ToArray());
 
             using (info.ScanLineNumbers(i => int.Parse(i) % 2 == 1).Subscribe(x => result = x))
