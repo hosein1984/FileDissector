@@ -1,28 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FileDissector.Domain.FileHandling
+﻿namespace FileDissector.Domain.FileHandling
 {
     public class ScrollRequest
     {
-        public int NumberOfItems { get; }
+        public int PageSize { get; }
         public int FirstIndex { get; }
-        public ScrollingType Type { get; }
+        public ScrollingMode Mode { get; }
 
-        public ScrollRequest(int numberOfItems)
+        public ScrollRequest(int pageSize)
         {
-            NumberOfItems = numberOfItems;
-            Type = ScrollingType.Tail;
+            PageSize = pageSize;
+            Mode = ScrollingMode.Tail;
         }
 
-        public ScrollRequest(int numberOfItems, int firstIndex)
+        public ScrollRequest(int pageSize, int firstIndex)
         {
-            NumberOfItems = numberOfItems;
-            Type = ScrollingType.User;
+            PageSize = pageSize;
             FirstIndex = firstIndex;
+            Mode = ScrollingMode.User;
         }
     }
 }
