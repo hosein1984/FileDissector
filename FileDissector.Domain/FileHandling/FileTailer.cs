@@ -22,7 +22,10 @@ namespace FileDissector.Domain.FileHandling
             if (textToMatch == null) throw new ArgumentNullException(nameof(textToMatch));
 
             // create list of lines which contain the observable text
-            MatchedLines = file.ScanLineNumbers(textToMatch).Replay(1).RefCount();
+            MatchedLines = file
+                .ScanLineNumbers(textToMatch)
+                .Replay(1)
+                .RefCount();
 
             // count of lines
             TotalLines = file.CountLines();

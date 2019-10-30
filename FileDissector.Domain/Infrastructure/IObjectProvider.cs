@@ -1,6 +1,6 @@
 ﻿namespace FileDissector.Domain.Infrastructure
 {
-    public interface IObjectFactory
+    public interface IObjectProvider
     {
         T Get<T>();
     }

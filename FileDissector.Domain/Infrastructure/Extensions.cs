@@ -1,9 +1,25 @@
 ﻿using System;
+using System.Reactive.Linq;
 
 namespace System
 {
     public static class Extensions
     {
+        public class ItemWithPrevious<T>
+        {
+            public T Previous;
+            public T Current;
+        }
+
+        public static IObservable<ItemWithPrevious<T>> WithPrevious<T>(this IObservable<T> source)
+        {
+            var previous = default(T);
+
+            return source
+                .Select(t => new ItemWithPrevious<T>() {Current = t, Previous = previous})
+                .Do(item => previous = item.Current);
+        }
+
         public static bool Contains(this string source, string toCheck, StringComparison comp)
         {
             return source.IndexOf(toCheck, comp) >= 0;

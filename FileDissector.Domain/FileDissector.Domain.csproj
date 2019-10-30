@@ -64,7 +64,7 @@
     <Compile Include="Infrastructure\Extensions.cs" />
     <Compile Include="Infrastructure\ILogger.cs" />
     <Compile Include="Infrastructure\ImmutableList.cs" />
-    <Compile Include="Infrastructure\IObjectFactory.cs" />
+    <Compile Include="Infrastructure\IObjectProvider.cs" />
     <Compile Include="Infrastructure\ISchedulerProvider.cs" />
     <Compile Include="Infrastructure\ReactiveEx.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

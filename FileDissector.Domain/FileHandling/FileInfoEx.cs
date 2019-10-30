@@ -204,17 +204,5 @@ namespace FileDissector.Domain.FileHandling
                     return source.ScanLineNumbers(predicate);
                 }).Switch();
         }
-
-        private class ScanningState
-        {
-            public bool Initial { get; }
-            public int[] Items { get; }
-
-            public ScanningState(bool initial, int[] items)
-            {
-                Initial = initial;
-                Items = items;
-            }
-        }
     }
 }
