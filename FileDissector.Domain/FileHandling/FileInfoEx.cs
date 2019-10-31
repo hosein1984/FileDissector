@@ -77,8 +77,9 @@ namespace FileDissector.Domain.FileHandling
         /// </summary>
         /// <param name="file">The <see cref="FileInfo"/> of the target file.</param>
         /// <param name="predicate">The predicate</param>
+        /// <param name="endOfTailChanged">The end of tail changed</param>
         /// <returns></returns>
-        public static IObservable<int[]> ScanLineNumbers(this FileInfo file, Func<string, bool> predicate = null)
+        public static IObservable<int[]> ScanLineNumbers(this FileInfo file, Func<string, bool> predicate = null, Action<int> endOfTailChanged = null)
         {
             return Observable.Create<int[]>(observer =>
             {
@@ -98,6 +99,9 @@ namespace FileDissector.Domain.FileHandling
                     {
                         var i = state.Item2;
                         var newItems = new List<int>();
+
+                        // notify
+                        endOfTailChanged?.Invoke(i);
 
                         while ((line = reader.ReadLine()) != null)
                         {
@@ -170,7 +174,7 @@ namespace FileDissector.Domain.FileHandling
             });
         }
 
-        public static IEnumerable<Line> ReadLines(this FileInfo source, int[] lines)
+        public static IEnumerable<Line> ReadLines(this FileInfo source, int[] lines, Func<int, bool> isEndOfTail = null)
         {
             using (var stream = File.Open(source.FullName, FileMode.Open, FileAccess.Read, FileShare.Delete | FileShare.ReadWrite))
             {
@@ -184,7 +188,7 @@ namespace FileDissector.Domain.FileHandling
 
                         if (lines.Contains(position))
                         {
-                            yield return new Line(position, line);
+                            yield return new Line(position, line, isEndOfTail == null ? null : (isEndOfTail(position) ? DateTime.Now : (DateTime?)null));
                         }
                     }
                 }

@@ -6,17 +6,21 @@ namespace FileDissector.Domain.FileHandling
     {
         public int Number { get; }
         public string Text { get; }
+        public DateTime? Timestamp { get; }
 
-        public Line(int number, string text)
+        public Line(int number, string text, DateTime? timestamp)
         {
             Number = number;
             Text = text;
+            Timestamp = timestamp;
         }
 
         public override string ToString()
         {
             return $"{Number}: {Text}";
         }
+
+        #region Equality
 
         public bool Equals(Line other)
         {
@@ -40,5 +44,7 @@ namespace FileDissector.Domain.FileHandling
                 return (Number * 397) ^ (Text != null ? Text.GetHashCode() : 0);
             }
         }
+
+        #endregion
     }
 }

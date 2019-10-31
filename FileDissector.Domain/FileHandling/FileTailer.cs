@@ -22,10 +22,29 @@ namespace FileDissector.Domain.FileHandling
             if (textToMatch == null) throw new ArgumentNullException(nameof(textToMatch));
 
             // create list of lines which contain the observable text
-            MatchedLines = file
-                .ScanLineNumbers(textToMatch)
-                .Replay(1)
-                .RefCount();
+            var matchedLines = textToMatch
+                .Select(searchText =>
+                {
+                    Func<string, bool> predicate = null;
+                    if (!string.IsNullOrEmpty(searchText))
+                    {
+                        predicate = s => s.Contains(searchText, StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    // get rid of this end of line state thing (make it part of the scan lines observable)
+                    int endOfTail = int.MaxValue;
+
+                    return file.ScanLineNumbers(predicate, eof => endOfTail = eof)
+                        .Select((matchingLines, index) => new
+                        {
+                            matchingLines,
+                            isInitial = index == 0,
+                            endOfTail
+                        });
+                }).Switch()
+                .Replay(1).RefCount();
+
+            MatchedLines = matchedLines.Select(x => x.matchingLines);
 
             // count of lines
             TotalLines = file.CountLines();
@@ -35,15 +54,18 @@ namespace FileDissector.Domain.FileHandling
 
             // Dynamically combine lines requested by the consumer with the lines which exist in the file. This enables
             // proper virtualization of the file
-            var scroller = MatchedLines
-                .CombineLatest(scrollRequest, (matched, request) => new { AllLines = matched, request})
+            var scroller = matchedLines
+                .CombineLatest(scrollRequest, (matched, request) => new { matched, request})
                 .Subscribe(x =>
                 {
                     var mode = x.request.Mode;
                     var pageSize = x.request.PageSize;
-                    var allLines = x.AllLines;
 
+                    var endOfTail = x.matched.endOfTail;
+                    var isInitial = x.matched.isInitial;
+                    var allLines = x.matched.matchingLines;
                     var previousPage = lines.Items.Select(l => l.Number).ToArray();
+                    
                     // if tailing, take the end only
                     // otherwise take the page size and start index from the request
                     var currentPage = (mode == ScrollingMode.Tail
@@ -54,7 +76,7 @@ namespace FileDissector.Domain.FileHandling
                     var removed = previousPage.Except(currentPage).ToArray();
 
                     // read new lines from the file
-                    var addedLines = file.ReadLines(added).ToArray();
+                    var addedLines = file.ReadLines(added, i => !isInitial && i > endOfTail).ToArray();
                     // get old lines from the current collection
                     var removedLines = lines.Items.Where(l => removed.Contains(l.Number)).ToArray();
 

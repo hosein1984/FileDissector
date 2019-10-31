@@ -14,6 +14,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/materialdesigntheme.listbox.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/materialdesigntheme.textbox.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Control.Resources>
@@ -70,7 +71,14 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Text="{Binding Number, Mode=OneWay}"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Text, Mode=OneWay}"/>
+                            <infrastructure:SearchableTextControl
+                                Grid.Column="1"
+                                IsHighlight="True"
+                                IsMatchCase="False"
+                                SearchText="{Binding ElementName=SearchTextBox, Path=Text}"
+                                HighlightBackground="{StaticResource SecondaryAccentBrush}"
+                                HighlightForeground="{StaticResource SecondaryAccentForegroundBrush}"
+                                Text="{Binding Text}"/>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

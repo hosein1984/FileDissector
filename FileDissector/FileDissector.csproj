@@ -104,6 +104,8 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Infrastructure\AutoScroller.cs" />
+    <Compile Include="Infrastructure\SearchableTextControl.cs" />
+    <Compile Include="Infrastructure\SolidColorAnimation.cs" />
     <Compile Include="Views\FileTailerView.xaml.cs">
       <DependentUpon>FileTailerView.xaml</DependentUpon>
     </Compile>
@@ -139,7 +141,7 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Page Include="Themes\Colours.xaml">
+    <Page Include="Themes\Colors.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
