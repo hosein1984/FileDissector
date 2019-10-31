@@ -18,6 +18,8 @@ namespace FileDissector.Views
         private string _searchText;
         private int _totalLines;
         private int _filteredLines;
+        private string _lineCountText;
+        private bool _tailing;
 
         public FileTailerViewModel(ILogger logger, ISchedulerProvider schedulerProvider, FileInfo fileInfo)
         {
@@ -25,14 +27,22 @@ namespace FileDissector.Views
             if (schedulerProvider == null) throw new ArgumentNullException(nameof(schedulerProvider));
 
             File = fileInfo.FullName;
+            Tailing = true;
 
             var tailer = new FileTailer(
                 fileInfo, 
                 this.WhenValueChanged(vm => vm.SearchText).Throttle(TimeSpan.FromMilliseconds(125)), 
                 Observable.Return(new ScrollRequest(40)));
 
-            var totalCount = tailer.TotalLines.Subscribe(total => TotalLines = total);
-            var filterCount = tailer.MatchedLines.Subscribe(filtered => FilteredLines = filtered.Length);
+            var lineCounter = tailer
+                .TotalLines
+                .CombineLatest(tailer.MatchedLines, (total, matched) =>
+                    total == matched.Length
+                        ? $"File has {total} lines"
+                        : $"Showing {matched.Length} of {total} lines")
+                .Subscribe(text => LineCountText = text);
+                
+
 
             var loader = tailer.Lines.Connect()
                 .Buffer(TimeSpan.FromMilliseconds(125)).FlattenBufferResult()
@@ -43,7 +53,7 @@ namespace FileDissector.Views
                 .Do(_ => AutoScroller.ScrollToEnd())
                 .Subscribe(a => logger.Info(a.Adds.ToString()), ex => logger.Error(ex, "Opps"));
 
-            _cleanup = new CompositeDisposable(tailer, totalCount, loader, filterCount);
+            _cleanup = new CompositeDisposable(tailer, lineCounter, loader);
         }
 
         public string File { get; }
@@ -58,16 +68,16 @@ namespace FileDissector.Views
             set => SetAndRaise(ref _searchText, value);
         }
 
-        public int TotalLines
+        public string LineCountText
         {
-            get => _totalLines;
-            set => SetAndRaise(ref _totalLines, value);
+            get => _lineCountText;
+            set => SetAndRaise(ref _lineCountText, value);
         }
 
-        public int FilteredLines
+        public bool Tailing
         {
-            get => _filteredLines;
-            set => SetAndRaise(ref _filteredLines, value);
+            get => _tailing;
+            set => SetAndRaise(ref _tailing, value);
         }
 
         public void Dispose()
