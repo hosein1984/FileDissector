@@ -18,7 +18,8 @@
                       WindowStartupLocation="CenterScreen"
                       WindowTransitionsEnabled="False"
                       TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-                      d:DataContext="{d:DesignInstance infrastructure:WindowViewModel, d:IsDesignTimeCreatable=False}">
+                      d:DataContext="{d:DesignInstance infrastructure:WindowViewModel, d:IsDesignTimeCreatable=False}"
+                      infrastructure:DependencyObjectHook.Receiver="{Binding DropMonitor}">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

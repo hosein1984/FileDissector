@@ -16,8 +16,6 @@ namespace FileDissector.Views
         private readonly IDisposable _cleanup;
         private readonly ReadOnlyObservableCollection<LineProxy> _data;
         private string _searchText;
-        private int _totalLines;
-        private int _filteredLines;
         private string _lineCountText;
         private bool _tailing;
 
@@ -38,8 +36,8 @@ namespace FileDissector.Views
                 .TotalLines
                 .CombineLatest(tailer.MatchedLines, (total, matched) =>
                     total == matched.Length
-                        ? $"File has {total} lines"
-                        : $"Showing {matched.Length} of {total} lines")
+                        ? $"File has {total:#,###} lines"
+                        : $"Showing {matched.Length:#,###} of {total:#,###} lines")
                 .Subscribe(text => LineCountText = text);
                 
 

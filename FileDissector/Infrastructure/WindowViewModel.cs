@@ -25,6 +25,8 @@ namespace FileDissector.Infrastructure
         public ICommand OpenFileCommand { get; }
         public ICommand ShowInGithubCommand { get; }
 
+        public FileDropMonitor DropMonitor { get; } = new FileDropMonitor();
+
         public WindowViewModel(IObjectProvider objectProvider, IWindowFactory windowFactory)
         {
             _objectProvider = objectProvider;
@@ -33,8 +35,12 @@ namespace FileDissector.Infrastructure
             OpenFileCommand = new Command(OpenFile);
             ShowInGithubCommand = new Command(() => Process.Start("https://github.com/hosein1984"));
 
+            var fileDropped = DropMonitor.Dropped.Subscribe(OpenFile);
+
             _cleanup = Disposable.Create(() =>
             {
+                fileDropped.Dispose();
+                DropMonitor.Dispose();
                 Views.Select(vc => vc.Content).OfType<IDisposable>().ForEach(disposable => disposable.Dispose());
             });
         }
@@ -66,8 +72,11 @@ namespace FileDissector.Infrastructure
 
             if (result != true) return;
 
-            var file = new FileInfo(dialog.FileName);
+            OpenFile(new FileInfo(dialog.FileName));
+        }
 
+        public void OpenFile(FileInfo file)
+        {
             var factory = _objectProvider.Get<FileTailerViewModelFactory>();
             var viewModel = factory.Create(file);
 
@@ -75,7 +84,6 @@ namespace FileDissector.Infrastructure
             Views.Add(newItem);
             Selected = newItem;
         }
-
         public void Dispose()
         {
             _cleanup.Dispose();
