@@ -35,9 +35,9 @@ namespace FileDissector.Views
             var lineCounter = tailer
                 .TotalLines
                 .CombineLatest(tailer.MatchedLines, (total, matched) =>
-                    total == matched.Length
+                    total == matched
                         ? $"File has {total:#,###} lines"
-                        : $"Showing {matched.Length:#,###} of {total:#,###} lines")
+                        : $"Showing {matched:#,###} of {total:#,###} lines")
                 .Subscribe(text => LineCountText = text);
                 
 

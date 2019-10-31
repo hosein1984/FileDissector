@@ -12,62 +12,78 @@ namespace FileDissector.Domain.FileHandling
     public static class FileInfoEx
     {
         /// <summary>
-        /// Coutns the number of lines in the file which matches the specified predicate.
+        /// Produces an observable report of lines in the file which matches the specified predicate. Together with meta data to
+        /// assist reading the actual file lines
         /// <remarks>
-        /// If no predicate is supplied counts all the lines
+        /// If no predicate is supplied all lines are returned
         /// </remarks>
         /// </summary>
-        /// <param name="file">The <see cref="FileInfo"/> of the target file.</param>
+        /// <param name="source"></param>
         /// <param name="predicate"></param>
         /// <returns></returns>
-        public static IObservable<int> CountLines(this FileInfo file, Func<string, bool> predicate = null)
+        public static IObservable<FileScanResult> ScanFile(this IObservable<FileNotification> source, Func<string, bool> predicate = null)
         {
-            return Observable.Create<int>(observer =>
-            {
-                var stream = File.Open(file.FullName, FileMode.Open, FileAccess.Read,
-                    FileShare.Delete | FileShare.ReadWrite);
-                stream.Seek(0, SeekOrigin.Begin);
-
-                var reader = new StreamReader(stream);
-
-                int CountToEnd()
+            return source
+                .Where(n => n.NotificationType == FileNotificationType.Created)
+                .Select(createdNotification =>
                 {
-                    var i = 0;
-                    string line;
-                    while ((line = reader.ReadLine()) != null)
+                    return Observable.Create<FileScanResult>(observer =>
                     {
-                        if (predicate == null)
-                        {
-                            i++;
-                        }
-                        else
-                        {
-                            if (predicate(line))
+                        var stream = File.Open(createdNotification.FullName, FileMode.Open, FileAccess.Read,
+                            FileShare.Delete | FileShare.ReadWrite);
+                        stream.Seek(0, SeekOrigin.Begin);
+
+                        var reader = new StreamReader(stream);
+
+                        string line;
+
+                        var notifier = source
+                            .Where(n => n.NotificationType == FileNotificationType.Changed)
+                            .StartWith(createdNotification)
+                            .Scan((FileScanResult) null, (state, notification) =>
                             {
-                                i++;
-                            }
-                        }
-                    }
+                                var count = state?.TotalLines ?? 0;
+                                var index = state?.Index ?? 0;
+                                var previousCount = count;
+                                var previousItems = state?.MatchingLines ?? new int[0];
+                                var newItems = new List<int>();
 
-                    return i;
-                }
+                                while ((line = reader.ReadLine()) != null)
+                                {
+                                    if (predicate == null)
+                                    {
+                                        count++;
+                                        newItems.Add(count);
+                                    }
+                                    else
+                                    {
+                                        count++;
+                                        if (predicate(line))
+                                        {
+                                            newItems.Add(count);
+                                        }
+                                    }
+                                }
 
-                var monitor = file.WatchFile()
-                    .Where(e => e.NotificationType == FileNotificationType.Created || e.NotificationType == FileNotificationType.Changed)
-                    .ToUnit()
-                    .StartWithUnit()
-                    .Scan(CountToEnd(), (total, _) => total + CountToEnd())
-                    .SubscribeSafe(observer);
+                                // combine the two arrays
+                                var newLines = new int[previousItems.Length + newItems.Count];
+                                previousItems.CopyTo(newLines, 0);
+                                newItems.CopyTo(newLines, previousItems.Length);
 
-                return Disposable.Create(() =>
-                {
-                    monitor.Dispose();
-                    stream.Close();
-                    stream.Dispose();
-                    reader.Close();
-                    reader.Dispose();
-                });
-            });
+                                return new FileScanResult(notification, newLines, count, previousCount, index);
+                            })
+                            .SubscribeSafe(observer);
+
+                        return Disposable.Create(() =>
+                        {
+                            notifier.Dispose();
+                            stream.Close();
+                            stream.Dispose();
+                            reader.Close();
+                            reader.Dispose();
+                        });
+                    });
+                }).Switch();
         }
 
         /// <summary>
@@ -160,46 +176,9 @@ namespace FileDissector.Domain.FileHandling
                     .SubscribeSafe(observer);
             });
         }
+        
 
 
-        //public static IObservable<FileSystemEventArgs> WatchFile(this FileInfo file)
-        //{
-        //    if (file.DirectoryName == null)
-        //    {
-        //        throw new ArgumentException("provided file info does not have a directory");
-        //    }
-        //    return Observable.Create<FileSystemEventArgs>(observer =>
-        //    {
-        //        var watcher = new FileSystemWatcher(file.DirectoryName, file.Name)
-        //        {
-        //            EnableRaisingEvents = true
-        //        };
-
-        //        var changed = Observable.FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
-        //                h => watcher.Changed += h,
-        //                h => watcher.Changed -= h)
-        //            .Select(ev => ev.EventArgs);
-
-        //        var deleted = Observable.FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
-        //                h => watcher.Deleted += h,
-        //                h => watcher.Deleted -= h)
-        //            .Select(ev => ev.EventArgs);
-
-        //        var created = Observable.FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
-        //                h => watcher.Created += h,
-        //                h => watcher.Created -= h)
-        //            .Select(ev => ev.EventArgs);
-
-
-        //        var renamed = Observable.FromEventPattern<RenamedEventHandler, RenamedEventArgs>(
-        //                h => watcher.Renamed += h,
-        //                h => watcher.Renamed -= h)
-        //            .Select(ev => ev.EventArgs);
-
-        //        return new CompositeDisposable(watcher,
-        //            changed.Merge(deleted).Merge(created).Merge(renamed).SubscribeSafe(observer));
-        //    });
-        //}
 
         public static IEnumerable<Line> ReadLines(this FileInfo source, int[] lines, Func<int, bool> isEndOfTail = null)
         {

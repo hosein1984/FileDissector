@@ -12,7 +12,7 @@ namespace FileDissector.Domain.FileHandling
         private readonly IDisposable _cleanup;
 
         public IObservable<int> TotalLines { get; }
-        public IObservable<int[]> MatchedLines { get;  }
+        public IObservable<int> MatchedLines { get;  }
 
         public IObservableList<Line> Lines { get; }
 
@@ -31,23 +31,14 @@ namespace FileDissector.Domain.FileHandling
                         predicate = s => s.Contains(searchText, StringComparison.OrdinalIgnoreCase);
                     }
 
-                    // get rid of this end of line state thing (make it part of the scan lines observable)
-                    int endOfTail = int.MaxValue;
-
-                    return file.ScanLineNumbers(predicate, eof => endOfTail = eof)
-                        .Select((matchingLines, index) => new
-                        {
-                            matchingLines,
-                            isInitial = index == 0,
-                            endOfTail
-                        });
+                    return file.WatchFile().ScanFile(predicate);
                 }).Switch()
                 .Replay(1).RefCount();
 
-            MatchedLines = matchedLines.Select(x => x.matchingLines);
+            MatchedLines = matchedLines.Select(x => x.MatchingLines.Length);
 
             // count of lines
-            TotalLines = file.CountLines();
+            TotalLines = matchedLines.Select(x => x.TotalLines);
 
             var lines = new SourceList<Line>();
             Lines = lines.AsObservableList();
@@ -61,9 +52,9 @@ namespace FileDissector.Domain.FileHandling
                     var mode = x.request.Mode;
                     var pageSize = x.request.PageSize;
 
-                    var endOfTail = x.matched.endOfTail;
-                    var isInitial = x.matched.isInitial;
-                    var allLines = x.matched.matchingLines;
+                    var endOfTail = x.matched.EndOfTail;
+                    var isInitial = x.matched.Index == 0;
+                    var allLines = x.matched.MatchingLines;
                     var previousPage = lines.Items.Select(l => l.Number).ToArray();
                     
                     // if tailing, take the end only

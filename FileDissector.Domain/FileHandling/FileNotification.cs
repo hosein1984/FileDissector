@@ -8,8 +8,8 @@ namespace FileDissector.Domain.FileHandling
         private FileInfo Info { get; }
         public bool Exists { get; }
         public long Size { get; }
-        public string FullName { get; }
-        public string Name { get; }
+        public string FullName => Info.FullName;
+        public string Name => Info.Name;
         public string Folder => Info.DirectoryName;
         public FileNotificationType NotificationType { get; }
         public Exception Error { get; }
