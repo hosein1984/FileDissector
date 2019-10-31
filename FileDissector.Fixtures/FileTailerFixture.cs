@@ -35,7 +35,7 @@ namespace FileDissector.Fixtures
 
                 File.AppendAllLines(file, Enumerable.Range(101, 10).Select(i => $"{i}"));
 
-                Thread.Sleep(TimeSpan.FromMilliseconds(100));
+                Thread.Sleep(TimeSpan.FromSeconds(1));
 
                 File.Delete(file);
 
@@ -69,7 +69,7 @@ namespace FileDissector.Fixtures
 
                 File.AppendAllLines(file, Enumerable.Range(101, 10).Select(i => $"{i}"));
 
-                Thread.Sleep(TimeSpan.FromMilliseconds(100));
+                Thread.Sleep(TimeSpan.FromSeconds(1));
 
                 File.Delete(file);
 

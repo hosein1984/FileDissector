@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using FileDissector.Domain.Infrastructure;
@@ -52,7 +53,7 @@ namespace FileDissector.Domain.FileHandling
                 }
 
                 var monitor = file.WatchFile()
-                    .Where(e => e.ChangeType == WatcherChangeTypes.Changed)
+                    .Where(e => e.NotificationType == FileNotificationType.Created || e.NotificationType == FileNotificationType.Changed)
                     .ToUnit()
                     .StartWithUnit()
                     .Scan(CountToEnd(), (total, _) => total + CountToEnd())
@@ -92,7 +93,7 @@ namespace FileDissector.Domain.FileHandling
                 string line;
 
                 var monitor = file.WatchFile()
-                    .Where(e => e.ChangeType == WatcherChangeTypes.Changed)
+                    .Where(e => e.NotificationType == FileNotificationType.Created || e.NotificationType == FileNotificationType.Changed)
                     .ToUnit()
                     .StartWithUnit()
                     .Scan(Tuple.Create(new ImmutableList<int>(), 0), (state, _) =>
@@ -135,44 +136,70 @@ namespace FileDissector.Domain.FileHandling
                 });
             });
         }
-        public static IObservable<FileSystemEventArgs> WatchFile(this FileInfo file)
+
+        public static IObservable<FileNotification> WatchFile(this FileInfo file, TimeSpan? refereshPeriod = null, IScheduler scheduler = null)
         {
-            if (file.DirectoryName == null)
+            return Observable.Create<FileNotification>(observer =>
             {
-                throw new ArgumentException("provided file info does not have a directory");
-            }
-            return Observable.Create<FileSystemEventArgs>(observer =>
-            {
-                var watcher = new FileSystemWatcher(file.DirectoryName, file.Name)
-                {
-                    EnableRaisingEvents = true
-                };
+                var referesh = refereshPeriod ?? TimeSpan.FromMilliseconds(250);
+                scheduler = scheduler ?? Scheduler.Default;
 
-                var changed = Observable.FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
-                        h => watcher.Changed += h,
-                        h => watcher.Changed -= h)
-                    .Select(ev => ev.EventArgs);
+                // todo: create a cool-off period after a poll to account for over running jobs
+                Func<IObservable<FileNotification>> poller = () => Observable.Interval(referesh, scheduler)
+                    .Scan((FileNotification) null, (state, _) =>
+                        state == null
+                            ? new FileNotification(file)
+                            : new FileNotification(state))
+                    .DistinctUntilChanged();
 
-                var deleted = Observable.FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
-                        h => watcher.Deleted += h,
-                        h => watcher.Deleted -= h)
-                    .Select(ev => ev.EventArgs);
-
-                var created = Observable.FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
-                        h => watcher.Created += h,
-                        h => watcher.Created -= h)
-                    .Select(ev => ev.EventArgs);
-
-
-                var renamed = Observable.FromEventPattern<RenamedEventHandler, RenamedEventArgs>(
-                        h => watcher.Renamed += h,
-                        h => watcher.Renamed -= h)
-                    .Select(ev => ev.EventArgs);
-
-                return new CompositeDisposable(watcher,
-                    changed.Merge(deleted).Merge(created).Merge(renamed).SubscribeSafe(observer));
+                // in theory, poll merrily away except slow down when there is an error
+                return poller()
+                    .Catch<FileNotification, Exception>(ex =>
+                        Observable.Return(new FileNotification(file, ex))
+                            .Concat(poller().DelaySubscription(TimeSpan.FromSeconds(10))))
+                    .SubscribeSafe(observer);
             });
         }
+
+
+        //public static IObservable<FileSystemEventArgs> WatchFile(this FileInfo file)
+        //{
+        //    if (file.DirectoryName == null)
+        //    {
+        //        throw new ArgumentException("provided file info does not have a directory");
+        //    }
+        //    return Observable.Create<FileSystemEventArgs>(observer =>
+        //    {
+        //        var watcher = new FileSystemWatcher(file.DirectoryName, file.Name)
+        //        {
+        //            EnableRaisingEvents = true
+        //        };
+
+        //        var changed = Observable.FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
+        //                h => watcher.Changed += h,
+        //                h => watcher.Changed -= h)
+        //            .Select(ev => ev.EventArgs);
+
+        //        var deleted = Observable.FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
+        //                h => watcher.Deleted += h,
+        //                h => watcher.Deleted -= h)
+        //            .Select(ev => ev.EventArgs);
+
+        //        var created = Observable.FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
+        //                h => watcher.Created += h,
+        //                h => watcher.Created -= h)
+        //            .Select(ev => ev.EventArgs);
+
+
+        //        var renamed = Observable.FromEventPattern<RenamedEventHandler, RenamedEventArgs>(
+        //                h => watcher.Renamed += h,
+        //                h => watcher.Renamed -= h)
+        //            .Select(ev => ev.EventArgs);
+
+        //        return new CompositeDisposable(watcher,
+        //            changed.Merge(deleted).Merge(created).Merge(renamed).SubscribeSafe(observer));
+        //    });
+        //}
 
         public static IEnumerable<Line> ReadLines(this FileInfo source, int[] lines, Func<int, bool> isEndOfTail = null)
         {
