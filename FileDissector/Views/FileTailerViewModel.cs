@@ -28,13 +28,14 @@ namespace FileDissector.Views
 
             var tailer = new FileTailer(
                 fileInfo, 
-                this.WhenValueChanged(vm => vm.SearchText).Throttle(TimeSpan.FromMilliseconds(250)), 
+                this.WhenValueChanged(vm => vm.SearchText).Throttle(TimeSpan.FromMilliseconds(125)), 
                 Observable.Return(new ScrollRequest(40)));
 
             var totalCount = tailer.TotalLines.Subscribe(total => TotalLines = total);
             var filterCount = tailer.MatchedLines.Subscribe(filtered => FilteredLines = filtered.Length);
 
             var loader = tailer.Lines.Connect()
+                .Buffer(TimeSpan.FromMilliseconds(125)).FlattenBufferResult()
                 .Transform(line => new LineProxy(line))
                 .Sort(SortExpressionComparer<LineProxy>.Ascending(proxy => proxy.Number))
                 .ObserveOn(schedulerProvider.MainThread)

@@ -30,6 +30,15 @@ namespace FileDissector.Domain.Infrastructure
             return new ImmutableList<T>(newData);
         }
 
+        public ImmutableList<T> Add(T[] values)
+        {
+            var result = new T[_data.Length + values.Length];
+            _data.CopyTo(result,0);
+            values.CopyTo(result, _data.Length);
+
+            return new ImmutableList<T>(result);
+        }
+
         public ImmutableList<T> Remove(T value)
         {
             var i = IndexOf(value);
