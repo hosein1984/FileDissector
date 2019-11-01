@@ -83,7 +83,7 @@
             
             <ListBox.ItemsPanel>
                 <ItemsPanelTemplate>
-                    <local:VirtualDataPanel
+                    <local:VirtualScrollPanel
                         ItemHeight="30"
                         ScrollReceiver="{Binding}"
                         StartIndex="{Binding FirstRow, Mode=TwoWay}"

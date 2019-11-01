@@ -31,7 +31,7 @@ namespace FileDissector.Views
     /// <summary>
     /// TODO: add full documentations to this class
     /// </summary>
-    public class VirtualDataPanel : VirtualizingPanel, IScrollInfo
+    public class VirtualScrollPanel : VirtualizingPanel, IScrollInfo
     {
         private const double ScrollLineAmount = 16.0;
         private Size _extentSize;
@@ -46,37 +46,37 @@ namespace FileDissector.Views
         private int _firstIndex;
 
         public static readonly DependencyProperty ItemHeightProperty =
-            DependencyProperty.Register("ItemHeight", typeof(double), typeof(VirtualDataPanel), new PropertyMetadata(1.0, OnRequireMeasure));
+            DependencyProperty.Register("ItemHeight", typeof(double), typeof(VirtualScrollPanel), new PropertyMetadata(1.0, OnRequireMeasure));
 
         public static readonly DependencyProperty VirtualItemIndexProperty = 
-            DependencyProperty.RegisterAttached("VirtualItemIndex", typeof(int), typeof(VirtualDataPanel), new PropertyMetadata(-1));
+            DependencyProperty.RegisterAttached("VirtualItemIndex", typeof(int), typeof(VirtualScrollPanel), new PropertyMetadata(-1));
         
         public static readonly DependencyProperty TotalItemsProperty =
-            DependencyProperty.Register("TotalItems", typeof(int), typeof(VirtualDataPanel), new PropertyMetadata(default(int), OnRequireMeasure));
+            DependencyProperty.Register("TotalItems", typeof(int), typeof(VirtualScrollPanel), new PropertyMetadata(default(int), OnRequireMeasure));
 
         public static readonly DependencyProperty StartIndexProperty =
-            DependencyProperty.Register("StartIndex", typeof(int), typeof(VirtualDataPanel), new PropertyMetadata(default(int), OnStartIndexChanged));
+            DependencyProperty.Register("StartIndex", typeof(int), typeof(VirtualScrollPanel), new PropertyMetadata(default(int), OnStartIndexChanged));
 
         public static readonly DependencyProperty ScrollReceiverProperty =
-            DependencyProperty.Register("ScrollReceiver", typeof(IScrollReceiver), typeof(VirtualDataPanel), new PropertyMetadata(default(IScrollReceiver)));
+            DependencyProperty.Register("ScrollReceiver", typeof(IScrollReceiver), typeof(VirtualScrollPanel), new PropertyMetadata(default(IScrollReceiver)));
 
 
         public static readonly DependencyProperty ChangeStartIndexCommandProperty =
-            DependencyProperty.Register("ChangeStartIndexCommand", typeof(ICommand), typeof(VirtualDataPanel), new PropertyMetadata(default(ICommand)));
+            DependencyProperty.Register("ChangeStartIndexCommand", typeof(ICommand), typeof(VirtualScrollPanel), new PropertyMetadata(default(ICommand)));
 
         public static readonly DependencyProperty ChangeSizeCommandProperty =
-            DependencyProperty.Register("ChangeSizeCommand", typeof(ICommand), typeof(VirtualDataPanel), new PropertyMetadata(default(ICommand)));
+            DependencyProperty.Register("ChangeSizeCommand", typeof(ICommand), typeof(VirtualScrollPanel), new PropertyMetadata(default(ICommand)));
 
         private static void OnStartIndexChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            var panel = d as VirtualDataPanel;
+            var panel = d as VirtualScrollPanel;
             panel?.InvalidateMeasure();
             panel?.InvalidateScrollInfo();
         }
 
         private static void OnRequireMeasure(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            var panel = d as VirtualDataPanel;
+            var panel = d as VirtualScrollPanel;
             panel?.InvalidateMeasure();
             panel?.InvalidateScrollInfo();
         }
@@ -130,7 +130,7 @@ namespace FileDissector.Views
 
         public double ItemWidth => _extentSize.Width;
 
-        public VirtualDataPanel()
+        public VirtualScrollPanel()
         {
             if (!DesignerProperties.GetIsInDesignMode(this))
             {
@@ -170,12 +170,11 @@ namespace FileDissector.Views
             _isInMeasure = true;
             _childLayouts.Clear();
 
-            var extentInfo = GetVerticalExtentInfo(availableSize);
-            _extentInfo = extentInfo;
+            _extentInfo = GetVerticalExtentInfo(availableSize);
 
-            EnsureScrollOffsetIsWithinConstrains(extentInfo);
+            EnsureScrollOffsetIsWithinConstrains(_extentInfo);
 
-            var layoutInfo = GetLayoutInfo(availableSize, ItemHeight, extentInfo);
+            var layoutInfo = GetLayoutInfo(availableSize, ItemHeight, _extentInfo);
 
             RecycleItems(layoutInfo);
 
@@ -183,17 +182,21 @@ namespace FileDissector.Views
             var generatorStartPosition = _itemsGenerator.GeneratorPositionFromIndex(layoutInfo.FirstRealizedItemIndex);
 
             var visualIndex = 0;
-            var actualWidth = 0.0;
+            var widestWidth = 0.0;
             var currentX = layoutInfo.FirstRealizedItemLeft;
             var currentY = layoutInfo.FirstRealizedLineTop;
 
             using (_itemsGenerator.StartAt(generatorStartPosition, GeneratorDirection.Forward, true))
             {
+                var children = new List<UIElement>();
+
                 for (var itemIndex = layoutInfo.FirstRealizedItemIndex; itemIndex <= layoutInfo.LastRealizedItemIndex; itemIndex++,visualIndex++)
                 {
                     var child = (UIElement) _itemsGenerator.GenerateNext(out var newlyRealized);
 
                     if (child == null) continue;
+
+                    children.Add(child);
 
                     SetVirtualItemIndex(child, itemIndex);
 
@@ -206,15 +209,14 @@ namespace FileDissector.Views
                         // check if item needs to be moved into a new position in the children collection
                         if (visualIndex < Children.Count)
                         {
-                            if (!Equals(Children[visualIndex], child))
+                            if (Equals(Children[visualIndex], child)) continue;
+
+                            var childCurrentIndex = Children.IndexOf(child);
+                            if (childCurrentIndex >= 0)
                             {
-                                var childCurrentIndex = Children.IndexOf(child);
-                                if (childCurrentIndex >= 0)
-                                {
-                                    RemoveInternalChildRange(childCurrentIndex, 1);
-                                }
-                                InsertInternalChild(visualIndex, child);
+                                RemoveInternalChildRange(childCurrentIndex, 1);
                             }
+                            InsertInternalChild(visualIndex, child);
                         }
                         else
                         {
@@ -224,26 +226,30 @@ namespace FileDissector.Views
                         }
                     }
 
-                    // only prepare the item once it has been added to the visaul tree
+                    
+                }
+                // part 2: do the measure
+                foreach (var child in children)
+                {
                     _itemsGenerator.PrepareItemContainer(child);
                     child.Measure(new Size(double.PositiveInfinity, ItemHeight));
-                    actualWidth = _viewPortSize.Width;
+                    widestWidth = _viewPortSize.Width;
+                }
 
-                    _childLayouts.Add(child, new Rect(currentX, currentY, actualWidth, ItemHeight));
+                // part 3: create the elements
+                foreach (var child in children)
+                {
+                    _childLayouts.Add(child, new Rect(currentX, currentY, widestWidth, ItemHeight));
                     currentY += ItemHeight;
                 }
             }
 
             RemoveRedundantChildren();
-            UpdateScrollInfo(availableSize, extentInfo, actualWidth);
-
-            var desiredSize = new Size(
-                double.IsInfinity(availableSize.Width) ? 0 : availableSize.Width,
-                double.IsInfinity(availableSize.Height) ? 0 : availableSize.Height);
+            UpdateScrollInfo(availableSize, _extentInfo, widestWidth);
 
             _isInMeasure = false;
 
-            return desiredSize;
+            return availableSize;
         }
 
         private void EnsureScrollOffsetIsWithinConstrains(ExtentInfo extentInfo)
@@ -342,7 +348,7 @@ namespace FileDissector.Views
             if (_itemsControl == null) return new ExtentInfo();
 
             var extentHeight = Math.Max(TotalItems * ItemHeight, viewPortSize.Height);
-            var maxVerticalOffset = extentHeight - viewPortSize.Height;
+            var maxVerticalOffset = extentHeight; //extentHeight - viewPortSize.Height;
             var verticalOffset = (StartIndex / (double) TotalItems) * maxVerticalOffset;
                 
             var info = new ExtentInfo()
@@ -356,8 +362,6 @@ namespace FileDissector.Views
 
             return info;
         }
-
-        
 
         public void SetHorizontalOffset(double offset)
         {
@@ -398,7 +402,7 @@ namespace FileDissector.Views
             {
                 firstIndex = 0;
             }
-            else if (firstIndex + _extentInfo.VirtualCount > _extentInfo.TotalCount)
+            else if (firstIndex + _extentInfo.VirtualCount >= _extentInfo.TotalCount)
             {
                 firstIndex = _extentInfo.TotalCount - _extentInfo.VirtualCount;
             }
