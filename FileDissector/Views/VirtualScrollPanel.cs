@@ -239,7 +239,7 @@ namespace FileDissector.Views
                 // part 3: create the elements
                 foreach (var child in children)
                 {
-                    _childLayouts.Add(child, new Rect(currentX, currentY, widestWidth, ItemHeight));
+                    _childLayouts.Add(child, new Rect(currentX, currentY, Math.Max(widestWidth, _viewPortSize.Width), ItemHeight));
                     currentY += ItemHeight;
                 }
             }
