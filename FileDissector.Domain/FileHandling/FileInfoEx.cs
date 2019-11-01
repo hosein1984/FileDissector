@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using FileDissector.Domain.Infrastructure;
 
 namespace FileDissector.Domain.FileHandling
 {
@@ -24,7 +23,7 @@ namespace FileDissector.Domain.FileHandling
         public static IObservable<FileScanResult> ScanFile(this IObservable<FileNotification> source, Func<string, bool> predicate = null)
         {
             return source
-                .Where(n => n.NotificationType == FileNotificationType.Created)
+                .Where(n => n.NotificationType == FileNotificationType.Created) // when a created notification type is seen open the file and start reading (and return that observable)
                 .Select(createdNotification =>
                 {
                     return Observable.Create<FileScanResult>(observer =>
@@ -37,9 +36,9 @@ namespace FileDissector.Domain.FileHandling
 
                         string line;
 
-                        var notifier = source
+                        var notifier = source // yeah we can reuse the main source in the inner observable!!!
                             .Where(n => n.NotificationType == FileNotificationType.Changed)
-                            .StartWith(createdNotification)
+                            .StartWith(createdNotification) // start with the created notification so observer see creation notification too
                             .Scan((FileScanResult) null, (state, notification) =>
                             {
                                 var count = state?.TotalLines ?? 0;
@@ -97,30 +96,37 @@ namespace FileDissector.Domain.FileHandling
         {
             return Observable.Create<FileNotification>(observer =>
             {
-                var referesh = refereshPeriod ?? TimeSpan.FromMilliseconds(250);
+                var refreshInterval = refereshPeriod ?? TimeSpan.FromMilliseconds(250);
                 scheduler = scheduler ?? Scheduler.Default;
 
                 // todo: create a cool-off period after a poll to account for over running jobs
-                Func<IObservable<FileNotification>> poller = () => Observable.Interval(referesh, scheduler)
+                IObservable<FileNotification> Poller() => Observable
+                    .Interval(refreshInterval, scheduler)
                     .StartWith(0)
                     .Scan((FileNotification) null, (state, _) =>
                         state == null
-                            ? new FileNotification(file)
-                            : new FileNotification(state))
+                            ? new FileNotification(file)   // for the first time when we have no prior data (notifications) about the file
+                            : new FileNotification(state)) // for subsequent times when we have prior data about the file
                     .DistinctUntilChanged();
 
                 // in theory, poll merrily away except slow down when there is an error
-                return poller()
+                return Poller()
                     .Catch<FileNotification, Exception>(ex =>
-                        Observable.Return(new FileNotification(file, ex))
-                            .Concat(poller().DelaySubscription(TimeSpan.FromSeconds(10))))
+                        Observable.Return(new FileNotification(file, ex)) // for when exceptions happen while retreving file data
+                            .Concat(Poller().DelaySubscription(TimeSpan.FromSeconds(10)))) // create a new subscription with a 10 sec delay
                     .SubscribeSafe(observer);
             });
         }
         
 
 
-
+        /// <summary>
+        /// Reads the specified lines numbers from the file
+        /// </summary>
+        /// <param name="source">The file</param>
+        /// <param name="lines">Line numbers to load from file</param>
+        /// <param name="isEndOfTail">A predicate that show if the line is end of the file or not. If returns true, we set the time for the loaded line to now.</param>
+        /// <returns></returns>
         public static IEnumerable<Line> ReadLines(this FileInfo source, int[] lines, Func<int, bool> isEndOfTail = null)
         {
             using (var stream = File.Open(source.FullName, FileMode.Open, FileAccess.Read, FileShare.Delete | FileShare.ReadWrite))

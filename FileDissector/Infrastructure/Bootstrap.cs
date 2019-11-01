@@ -5,6 +5,9 @@ using StructureMap;
 
 namespace FileDissector.Infrastructure
 {
+    /// <summary>
+    /// The main entry point for the application.
+    /// </summary>
     public class Bootstrap
     {
         [STAThread]

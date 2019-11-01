@@ -27,6 +27,10 @@ namespace FileDissector.Views
         void RequestChange(ScrollValues values);
     }
 
+
+    /// <summary>
+    /// TODO: add full documentations to this class
+    /// </summary>
     public class VirtualDataPanel : VirtualizingPanel, IScrollInfo
     {
         private const double ScrollLineAmount = 16.0;

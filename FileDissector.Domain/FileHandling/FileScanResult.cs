@@ -1,5 +1,6 @@
 ﻿namespace FileDissector.Domain.FileHandling
 {
+    
     public class FileScanResult
     {
         public FileNotification Notification { get; }
@@ -8,7 +9,11 @@
         public int EndOfTail { get; }
         public int Index { get; }
 
-        public FileScanResult(FileNotification notification, int[] matchingLines, int totalLines, int endOfTail,
+        public FileScanResult(
+            FileNotification notification, 
+            int[] matchingLines, 
+            int totalLines, 
+            int endOfTail,
             int index)
         {
             Notification = notification;

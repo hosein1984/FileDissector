@@ -2,10 +2,24 @@
 
 namespace FileDissector.Domain.FileHandling
 {
+    /// <summary>
+    /// Represents a Line in a file
+    /// </summary>
     public class Line : IEquatable<Line>
     {
+        /// <summary>
+        /// Line numebr
+        /// </summary>
         public int Number { get; }
+        
+        /// <summary>
+        /// Line text
+        /// </summary>
         public string Text { get; }
+
+        /// <summary>
+        /// Represents the time the line is loaded in the app which if using small poll intervals is almost the same as the when the line is created
+        /// </summary>
         public DateTime? Timestamp { get; }
 
         public Line(int number, string text, DateTime? timestamp)

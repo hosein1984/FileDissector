@@ -3,6 +3,15 @@ using System.IO;
 
 namespace FileDissector.Domain.FileHandling
 {
+    /// <summary>
+    /// This class represent the result of a file scan based on the "polling" approach.
+    /// In the polling approach instead of using the <see cref="FileSystemWatcher"/> class, we regularly using our info of the file 
+    /// and based on these updated information return appropriate notification.
+    /// <remarks>
+    /// The structure of these class is set to use different constructors to get differernt states of the <see cref="FileNotification"/>.
+    /// Each of the constructor usages are explained in the following.
+    /// </remarks>
+    /// </summary>
     public class FileNotification : IEquatable<FileNotification>
     {
         private FileInfo Info { get; }
@@ -14,12 +23,18 @@ namespace FileDissector.Domain.FileHandling
         public FileNotificationType NotificationType { get; }
         public Exception Error { get; }
 
+        /// <summary>
+        /// This constructor is used for when we have no prior knowledge of the file notifications. This is used when we first start 
+        /// polling changes from the File.
+        /// </summary>
+        /// <param name="fileInfo"></param>
         public FileNotification(FileInfo fileInfo)
         {
-            fileInfo.Refresh();
+            fileInfo.Refresh(); // in case that the file is changed from the time that the FileInfo object is created
             Info = fileInfo;
             Exists = fileInfo.Exists;
 
+            // since this constructor is used for the start of polling, it only handles "Created" and "Missing" notification types
             if (Exists)
             {
                 NotificationType = FileNotificationType.Created;
@@ -31,6 +46,11 @@ namespace FileDissector.Domain.FileHandling
             }
         }
 
+        /// <summary>
+        /// This constructor is used when we faced an exception while trying to poll information for the file.
+        /// </summary>
+        /// <param name="fileInfo"></param>
+        /// <param name="error"></param>
         public FileNotification(FileInfo fileInfo, Exception error)
         {
             Info = fileInfo;
@@ -39,9 +59,14 @@ namespace FileDissector.Domain.FileHandling
             NotificationType = FileNotificationType.Error;
         }
 
+        /// <summary>
+        /// This constructor is used when we have already started polling from the file and we have prior knowledge (notifications) about the file.
+        /// By comparing the new state with the old state this constructor created the correct notification type
+        /// </summary>
+        /// <param name="previous"></param>
         public FileNotification(FileNotification previous)
         {
-            previous.Info.Refresh();
+            previous.Info.Refresh(); // in case that the file is changed from the time that the FileInfo object is created
 
             Info = previous.Info;
             Exists = Info.Exists;
@@ -60,6 +85,7 @@ namespace FileDissector.Domain.FileHandling
                 }
                 else
                 {
+                    // this case represent when the file is not changed betweem different polls
                     NotificationType = FileNotificationType.None;
                 }
             }

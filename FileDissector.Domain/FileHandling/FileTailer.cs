@@ -11,15 +11,11 @@ namespace FileDissector.Domain.FileHandling
     {
         private readonly IDisposable _cleanup;
 
-        public IObservable<int> TotalLines { get; }
-        public IObservable<int> MatchedLines { get;  }
-
-        public IObservableList<Line> Lines { get; }
-
         public FileTailer(FileInfo file, IObservable<string> textToMatch, IObservable<ScrollRequest> scrollRequest)
         {
             if (file == null) throw new ArgumentNullException(nameof(file));
             if (textToMatch == null) throw new ArgumentNullException(nameof(textToMatch));
+            if (scrollRequest == null) throw new ArgumentNullException(nameof(scrollRequest));
 
             // create list of lines which contain the observable text
             var matchedLines = textToMatch
@@ -28,20 +24,24 @@ namespace FileDissector.Domain.FileHandling
                     Func<string, bool> predicate = null;
                     if (!string.IsNullOrEmpty(searchText))
                     {
+                        // TODO: for now we use case insensitive search but we need to update it later on 
                         predicate = s => s.Contains(searchText, StringComparison.OrdinalIgnoreCase);
                     }
 
+                    // todo: probably not the most efficient implementation to start reading the file all over again but works for now
                     return file.WatchFile().ScanFile(predicate);
-                }).Switch()
-                .Replay(1).RefCount();
+                })
+                .Switch()
+                .Replay(1) // we use a replay here because we want to create a hot observable that all the subscribers share a single instance of
+                .RefCount();
 
-            MatchedLines = matchedLines.Select(x => x.MatchingLines.Length);
+            MatchedLinesCount = matchedLines.Select(x => x.MatchingLines.Length);
 
             // count of lines
-            TotalLines = matchedLines.Select(x => x.TotalLines);
+            TotalLinesCount = matchedLines.Select(x => x.TotalLines);
 
-            var lines = new SourceList<Line>();
-            Lines = lines.AsObservableList();
+            var lines = new SourceList<Line>(); // this is where the DynamicData magic happens!
+            Lines = lines.AsObservableList();   // convert the sourceList to observableList
 
             // Dynamically combine lines requested by the consumer with the lines which exist in the file. This enables
             // proper virtualization of the file
@@ -81,6 +81,10 @@ namespace FileDissector.Domain.FileHandling
 
             _cleanup = new CompositeDisposable(Lines, scroller, lines);
         }
+
+        public IObservable<int> TotalLinesCount { get; }
+        public IObservable<int> MatchedLinesCount { get; }
+        public IObservableList<Line> Lines { get; }
 
         public void Dispose()
         {

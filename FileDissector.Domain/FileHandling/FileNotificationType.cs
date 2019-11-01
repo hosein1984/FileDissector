@@ -5,10 +5,10 @@ namespace FileDissector.Domain.FileHandling
     [Flags]
     public enum FileNotificationType
     {
-        None    = 1,
-        Created = 2,
-        Changed = 4,
-        Missing = 8,
-        Error   = 16
+        None    = 1, // not changed
+        Created = 2, // file created
+        Changed = 4, // size of the file is changed
+        Missing = 8, // while is missing 
+        Error   = 16 // had error retreiving data about file
     }
 }

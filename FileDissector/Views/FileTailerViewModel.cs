@@ -46,8 +46,8 @@ namespace FileDissector.Views
             var tailer = new FileTailer(fileInfo, filterRequest, autoTail);
 
             var lineCounter = tailer
-                .TotalLines
-                .CombineLatest(tailer.MatchedLines, (total, matched) =>
+                .TotalLinesCount
+                .CombineLatest(tailer.MatchedLinesCount, (total, matched) =>
                     total == matched
                         ? $"File has {total:#,###} lines"
                         : $"Showing {matched:#,###} of {total:#,###} lines")
@@ -65,7 +65,7 @@ namespace FileDissector.Views
 
             // monitor matching lines and start index
             // update local values so the virtual scroll panel can bind to them
-            var matchedLinesMonitor = tailer.MatchedLines
+            var matchedLinesMonitor = tailer.MatchedLinesCount
                 .Subscribe(matched => MatchedLinesCount = matched);
 
             var firstIndexMonitor = tailer.Lines.Connect()
