@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Runtime.ExceptionServices;
 using DynamicData;
 using DynamicData.Binding;
 using FileDissector.Domain.FileHandling;
@@ -11,26 +14,36 @@ using FileDissector.Infrastructure;
 
 namespace FileDissector.Views
 {
-    public class FileTailerViewModel : AbstractNotifyPropertyChanged, IDisposable
+    public class FileTailerViewModel : AbstractNotifyPropertyChanged, IDisposable, IScrollReceiver
     {
         private readonly IDisposable _cleanup;
         private readonly ReadOnlyObservableCollection<LineProxy> _data;
+        private readonly ISubject<ScrollValues> _userScrollRequested = new Subject<ScrollValues>();
         private string _searchText;
         private string _lineCountText;
-        private bool _tailing;
+        private bool _autoTail;
+        private int _firstrow;
+        private int _matchedLineCount;
+        private int _matchedLinesCount;
 
         public FileTailerViewModel(ILogger logger, ISchedulerProvider schedulerProvider, FileInfo fileInfo)
         {
             if (logger == null) throw new ArgumentNullException(nameof(logger));
             if (schedulerProvider == null) throw new ArgumentNullException(nameof(schedulerProvider));
+            if (fileInfo == null) throw new ArgumentNullException(nameof(fileInfo));
 
             File = fileInfo.FullName;
-            Tailing = true;
+            AutoTail = true;
 
-            var tailer = new FileTailer(
-                fileInfo, 
-                this.WhenValueChanged(vm => vm.SearchText).Throttle(TimeSpan.FromMilliseconds(125)), 
-                Observable.Return(new ScrollRequest(40)));
+            var filterRequest = this.WhenValueChanged(vm => vm.SearchText).Throttle(TimeSpan.FromMilliseconds(125));
+            var autoTail = this.WhenValueChanged(vm => vm.AutoTail)
+                .CombineLatest(_userScrollRequested, (auto, user) =>
+                    auto
+                        ? new ScrollRequest(user.Rows)
+                        : new ScrollRequest(user.Rows, user.FirstIndex + 1))
+                .DistinctUntilChanged();
+
+            var tailer = new FileTailer(fileInfo, filterRequest, autoTail);
 
             var lineCounter = tailer
                 .TotalLines
@@ -40,8 +53,7 @@ namespace FileDissector.Views
                         : $"Showing {matched:#,###} of {total:#,###} lines")
                 .Subscribe(text => LineCountText = text);
                 
-
-
+            // load lines into observable collection
             var loader = tailer.Lines.Connect()
                 .Buffer(TimeSpan.FromMilliseconds(125)).FlattenBufferResult()
                 .Transform(line => new LineProxy(line))
@@ -51,7 +63,44 @@ namespace FileDissector.Views
                 .Do(_ => AutoScroller.ScrollToEnd())
                 .Subscribe(a => logger.Info(a.Adds.ToString()), ex => logger.Error(ex, "Opps"));
 
-            _cleanup = new CompositeDisposable(tailer, lineCounter, loader);
+            // monitor matching lines and start index
+            // update local values so the virtual scroll panel can bind to them
+            var matchedLinesMonitor = tailer.MatchedLines
+                .Subscribe(matched => MatchedLinesCount = matched);
+
+            var firstIndexMonitor = tailer.Lines.Connect()
+                .QueryWhenChanged(lines =>
+                {
+                    // use zero based index rather than line number
+                    return lines.Count == 0 ? 0 : lines.Select(l => l.Number).Min() - 1;
+                }).Subscribe(first => FirstRow = first - 1);
+
+            _cleanup = new CompositeDisposable(
+                tailer, 
+                lineCounter, 
+                loader,
+                matchedLinesMonitor,
+                firstIndexMonitor,
+                Disposable.Create(() => _userScrollRequested.OnCompleted()));
+        }
+
+        public int MatchedLinesCount
+        {
+            get => _matchedLinesCount;
+            set => SetAndRaise(ref _matchedLinesCount, value);
+        }
+
+        void IScrollReceiver.RequestChange(ScrollValues values)
+        {
+            if (values == null) throw new ArgumentNullException(nameof(values));
+
+            _userScrollRequested.OnNext(values);
+        }
+
+        public int FirstRow
+        {
+            get => _firstrow;
+            set => SetAndRaise(ref _firstrow, value);
         }
 
         public string File { get; }
@@ -72,15 +121,17 @@ namespace FileDissector.Views
             set => SetAndRaise(ref _lineCountText, value);
         }
 
-        public bool Tailing
+        public bool AutoTail
         {
-            get => _tailing;
-            set => SetAndRaise(ref _tailing, value);
+            get => _autoTail;
+            set => SetAndRaise(ref _autoTail, value);
         }
 
         public void Dispose()
         {
             _cleanup.Dispose();
         }
+
+        
     }
 }

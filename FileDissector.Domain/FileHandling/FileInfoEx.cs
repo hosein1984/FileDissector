@@ -102,6 +102,7 @@ namespace FileDissector.Domain.FileHandling
 
                 // todo: create a cool-off period after a poll to account for over running jobs
                 Func<IObservable<FileNotification>> poller = () => Observable.Interval(referesh, scheduler)
+                    .StartWith(0)
                     .Scan((FileNotification) null, (state, _) =>
                         state == null
                             ? new FileNotification(file)

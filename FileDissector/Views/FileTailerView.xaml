@@ -55,43 +55,89 @@
             <CheckBox Grid.Column="1"
                       HorizontalAlignment="Right"
                       VerticalAlignment="Center"
-                      IsChecked="{Binding Tailing, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      IsChecked="{Binding AutoTail, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                       Margin="0 0 6 0"
                       Content="Follow Tail"/>
 
         </Grid>
 
 
-        <ScrollViewer Grid.Row="1"
-                      VerticalScrollBarVisibility="Auto"
-                      infrastructure:DependencyObjectHook.Receiver="{Binding AutoScroller}">
-            <ListBox
-                ItemsSource="{Binding Lines}">
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding Lines}">
+            <ListBox.Template>
+                <ControlTemplate>
+                    <ScrollViewer x:Name="ScrollViewer"
+                                  infrastructure:DependencyObjectHook.Receiver="{Binding AutoScroller}"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  CanContentScroll="True"
+                                  Padding="{TemplateBinding Padding}"
+                                  Background="{TemplateBinding Background}"
+                                  BorderBrush="Transparent"
+                                  BorderThickness="0"
+                                  IsTabStop="False">
+                        <ItemsPresenter/>
+                    </ScrollViewer>
+                </ControlTemplate>
+            </ListBox.Template>
+            
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <local:VirtualDataPanel
+                        ItemHeight="30"
+                        ScrollReceiver="{Binding}"
+                        StartIndex="{Binding FirstRow, Mode=TwoWay}"
+                        TotalItems="{Binding MatchedLinesCount}"/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
 
-                <ListBox.ItemTemplate>
-                    <DataTemplate DataType="{x:Type local:LineProxy}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" MinWidth="40"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:LineProxy}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" MinWidth="40"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                            <TextBlock Text="{Binding Number, Mode=OneWay}"/>
-                            <infrastructure:SearchableTextControl
-                                Grid.Column="1"
-                                IsHighlight="True"
-                                IsMatchCase="False"
-                                SearchText="{Binding ElementName=SearchTextBox, Path=Text}"
-                                HighlightBackground="{StaticResource SecondaryAccentBrush}"
-                                HighlightForeground="{StaticResource SecondaryAccentForegroundBrush}"
-                                Text="{Binding Text}"/>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                        <TextBlock Text="{Binding Number, Mode=OneWay}"/>
+                        <infrastructure:SearchableTextControl
+                            Grid.Column="1"
+                            IsHighlight="True"
+                            IsMatchCase="False"
+                            SearchText="{Binding ElementName=SearchTextBox, Path=Text}"
+                            HighlightBackground="{StaticResource SecondaryAccentBrush}"
+                            HighlightForeground="{StaticResource SecondaryAccentForegroundBrush}"
+                            Text="{Binding Text}"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+            
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="{x:Type ListBoxItem}" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsRecent}" Value="True">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <infrastructure:SolidColorAnimation
+                                            Storyboard.TargetProperty="(ListBoxItem.Background).(SolidColorBrush.Color)"
+                                            FromBrush="{StaticResource SecondaryAccentBrush}"
+                                            Duration="0:0:5"
+                                            />
+                                        <infrastructure:SolidColorAnimation
+                                            Storyboard.TargetProperty="(ListBoxItem.Foreground).(SolidColorBrush.Color)"
+                                            FromBrush="{StaticResource SecondaryAccentForegroundBrush}"
+                                            Duration="0:0:5"
+                                            />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.EnterActions>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ListBox.ItemContainerStyle>
+        </ListBox>
 
-        </ScrollViewer>
-        
         <Grid
             Grid.Row="2"
             Height="26"
